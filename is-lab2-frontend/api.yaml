@@ -1,0 +1,490 @@
+openapi: 3.0.3
+info:
+  title: Vehicles Service API
+  version: 1.0.0
+
+servers:
+  - url: /api
+
+paths:
+  #######################################
+  #        COORDINATES CATEGORY         #
+  #######################################
+
+  /coordinates:
+    get:
+      tags: [Coordinates]
+      summary: Get list of coordinates
+      parameters:
+        - in: query
+          name: field
+          schema:
+            $ref: '#/components/schemas/CoordinatesField'
+        - in: query
+          name: value
+          schema:
+            type: string
+        - in: query
+          name: orderBy
+          schema:
+            $ref: '#/components/schemas/SortDirection'
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+            minimum: 0
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: List of coordinates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CoordinatesDto'
+
+    post:
+      tags: [Coordinates]
+      summary: Create new coordinates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoordinatesWithoutIdDto'
+      responses:
+        '201':
+          description: Created coordinates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoordinatesDto'
+
+  /coordinates/{id}:
+    get:
+      tags: [Coordinates]
+      summary: Get coordinates by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Coordinates found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoordinatesDto'
+
+    put:
+      tags: [Coordinates]
+      summary: Update coordinates by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoordinatesDto'
+      responses:
+        '200':
+          description: Updated coordinates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoordinatesDto'
+
+    delete:
+      tags: [Coordinates]
+      summary: Delete coordinates by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deletion result
+          content:
+            application/json:
+              schema:
+                type: object
+
+  #######################################
+  #        VEHICLES CATEGORY            #
+  #######################################
+
+  /vehicles:
+    get:
+      tags: [Vehicles]
+      summary: Get list of vehicles
+      parameters:
+        - in: query
+          name: field
+          schema:
+            $ref: '#/components/schemas/VehicleField'
+        - in: query
+          name: value
+          schema:
+            type: string
+        - in: query
+          name: orderBy
+          schema:
+            $ref: '#/components/schemas/SortDirection'
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+            minimum: 0
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: List of vehicles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VehicleDto'
+
+    post:
+      tags: [Vehicles]
+      summary: Create new vehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleWithoutIdDto'
+      responses:
+        '201':
+          description: Created vehicle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleDto'
+
+  /vehicles/{id}:
+    get:
+      tags: [Vehicles]
+      summary: Get vehicle by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Vehicle found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleDto'
+
+    put:
+      tags: [Vehicles]
+      summary: Update vehicle by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleDto'
+      responses:
+        '200':
+          description: Updated vehicle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleDto'
+
+    delete:
+      tags: [Vehicles]
+      summary: Delete vehicle by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deletion result
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /vehicles/min-engine-power:
+    get:
+      tags: [Vehicles]
+      summary: Find vehicle with minimum engine power
+      responses:
+        '200':
+          description: Vehicle with min engine power
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleDto'
+
+  /vehicles/count-gt-fuel-type:
+    get:
+      tags: [Vehicles]
+      summary: Count vehicles with fuelType greater than provided
+      parameters:
+        - in: query
+          name: fuelType
+          required: true
+          schema:
+            $ref: '#/components/schemas/FuelType'
+      responses:
+        '200':
+          description: Count
+          content:
+            application/json:
+              schema:
+                type: integer
+        '400':
+          description: Missing fuelType
+
+  /vehicles/search-by-name:
+    get:
+      tags: [Vehicles]
+      summary: Find vehicles where name contains substring
+      parameters:
+        - in: query
+          name: name
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 1
+            minimum: 0
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+            minimum: 0
+      responses:
+        '200':
+          description: Vehicles found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VehicleDto'
+
+  /vehicles/engine-power-range:
+    get:
+      tags: [Vehicles]
+      summary: Find vehicles with enginePower in [min, max]
+      parameters:
+        - in: query
+          name: min
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: max
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 1
+            minimum: 0
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+            minimum: 0
+      responses:
+        '200':
+          description: Vehicles in range
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VehicleDto'
+
+  /vehicles/{id}/reset-distance:
+    post:
+      tags: [Vehicles]
+      summary: Reset vehicle distanceTravelled
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Updated vehicle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleDto'
+
+components:
+  schemas:
+    #######################################
+    #             COMMON SCHEMAS          #
+    #######################################
+
+    SortDirection:
+      type: string
+      enum: [ASC, DESC]
+
+    CoordinatesField:
+      type: string
+      enum: [id, x, y]
+
+    VehicleField:
+      type: string
+      enum:
+        - id
+        - name
+        - enginePower
+        - fuelConsumption
+        - numberOfWheels
+        - capacity
+        - distanceTravelled
+        - fuelType
+        - type
+
+    FuelType:
+      type: string
+      enum: [GASOLINE, DIESEL, ELECTRIC, KEROSENE, NUCLEAR]
+
+    VehicleType:
+      type: string
+      enum: [DRONE, SHIP, CAR, PLANE]
+
+    #######################################
+    #        COORDINATES SCHEMAS          #
+    #######################################
+
+    CoordinatesDto:
+      type: object
+      properties:
+        id:
+          type: integer
+        x:
+          type: number
+        y:
+          type: number
+          maximum: 910
+
+    CoordinatesWithoutIdDto:
+      type: object
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+          maximum: 910
+      required: [x, y]
+
+    #######################################
+    #          VEHICLES SCHEMAS           #
+    #######################################
+
+    VehicleDto:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        coordinates:
+          $ref: '#/components/schemas/CoordinatesDto'
+        creationDate:
+          type: string
+          format: date-time
+        type:
+          $ref: '#/components/schemas/VehicleType'
+        enginePower:
+          type: integer
+          minimum: 1
+        numberOfWheels:
+          type: integer
+          minimum: 1
+        capacity:
+          type: number
+          minimum: 1
+        distanceTravelled:
+          type: integer
+          minimum: 1
+        fuelConsumption:
+          type: number
+          minimum: 1
+        fuelType:
+          $ref: '#/components/schemas/FuelType'
+
+    VehicleWithoutIdDto:
+      type: object
+      properties:
+        name:
+          type: string
+        coordinates:
+          $ref: '#/components/schemas/CoordinatesDto'
+        type:
+          $ref: '#/components/schemas/VehicleType'
+        enginePower:
+          type: integer
+        numberOfWheels:
+          type: integer
+        capacity:
+          type: number
+        distanceTravelled:
+          type: integer
+        fuelConsumption:
+          type: number
+        fuelType:
+          $ref: '#/components/schemas/FuelType'
+      required:
+        - name
+        - coordinates
+        - enginePower
+        - numberOfWheels
+        - capacity
+        - distanceTravelled
+        - fuelConsumption
+        - fuelType

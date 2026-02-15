@@ -1,0 +1,56 @@
+vehicles:
+  - name: Alpha
+    coordinates:
+      x: 10.0
+      y: 100.0
+    type: BOAT
+    enginePower: 200
+    numberOfWheels: 4
+    capacity: 15.0
+    distanceTravelled: 800
+    fuelConsumption: 6.0
+    fuelType: KEROSENE
+  - name: Beta
+    coordinates:
+      x: 20.0
+      y: 200.0
+    type: SHIP
+    enginePower: 500
+    numberOfWheels: 8
+    capacity: 40.0
+    distanceTravelled: 3000
+    fuelConsumption: 12.0
+    fuelType: PLASMA
+  - name: Gamma
+    coordinates:
+      x: 10.0
+      y: 100.0
+    type: MOTORCYCLE
+    enginePower: 90
+    numberOfWheels: 2
+    capacity: 5.5
+    distanceTravelled: 250
+    fuelConsumption: 3.0
+    fuelType: ALCOHOL
+  - name: Delta
+    coordinates:
+      x: 30.0
+      y: 300.0
+    type: CHOPPER
+    enginePower: 130
+    numberOfWheels: 2
+    capacity: 7.0
+    distanceTravelled: 900
+    fuelConsumption: 4.5
+    fuelType: MANPOWER
+  - name: Epsilon
+    coordinates:
+      x: 20.0
+      y: 200.0
+    type: BOAT
+    enginePower: 210
+    numberOfWheels: 4
+    capacity: 16.0
+    distanceTravelled: 1000
+    fuelConsumption: 6.2
+    fuelType: KEROSENE

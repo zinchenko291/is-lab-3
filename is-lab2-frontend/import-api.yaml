@@ -1,0 +1,196 @@
+openapi: 3.0.3
+info:
+  title: Import API
+  version: 1.0.0
+paths:
+  /api/imports:
+    post:
+      summary: Start import from file
+      description: Upload YAML or XML file and start import.
+      parameters:
+        - in: query
+          name: format
+          schema:
+            type: string
+            enum: [yaml, yml, xml]
+          description: Optional format override. If omitted, derived from filename.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Import operation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportOperation'
+        '400':
+          description: Bad request (missing file or invalid format)
+          content:
+            text/plain:
+              schema:
+                type: string
+    get:
+      summary: Import history
+      description: Admin sees all operations; regular user sees only their own.
+      responses:
+        '200':
+          description: Import operations list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ImportOperation'
+  /api/imports/{id}/conflicts:
+    get:
+      summary: List conflicts for import operation
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Conflicts list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ImportConflict'
+        '403':
+          description: Forbidden
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Import operation not found
+          content:
+            text/plain:
+              schema:
+                type: string
+  /api/imports/{id}/conflicts/{conflictId}/resolve:
+    post:
+      summary: Resolve conflict (skip or overwrite)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: conflictId
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: resolution
+          required: true
+          schema:
+            type: string
+            enum: [SKIP, OVERWRITE]
+      responses:
+        '200':
+          description: Updated import operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportOperation'
+        '400':
+          description: Invalid resolution
+          content:
+            text/plain:
+              schema:
+                type: string
+        '403':
+          description: Forbidden
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Conflict not found
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  schemas:
+    ImportStatus:
+      type: string
+      enum: [PENDING, RUNNING, PAUSED, FAILED, SUCCEEDED]
+    ImportFormat:
+      type: string
+      enum: [YAML, XML]
+    ImportConflictResolution:
+      type: string
+      enum: [UNRESOLVED, SKIP, OVERWRITE]
+    UserShort:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required: [id, name]
+    ImportOperation:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          $ref: '#/components/schemas/ImportStatus'
+        format:
+          $ref: '#/components/schemas/ImportFormat'
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        addedCount:
+          type: integer
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+        user:
+          $ref: '#/components/schemas/UserShort'
+      required: [id, status, format, startedAt, user]
+    ImportConflict:
+      type: object
+      properties:
+        id:
+          type: integer
+        resolution:
+          $ref: '#/components/schemas/ImportConflictResolution'
+        vehicleIndex:
+          type: integer
+        existingVehicleId:
+          type: integer
+          nullable: true
+        coordinateX:
+          type: number
+          format: double
+        coordinateY:
+          type: number
+          format: double
+        userId:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, resolution, vehicleIndex, coordinateX, coordinateY, userId, createdAt]
