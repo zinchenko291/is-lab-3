@@ -12,7 +12,7 @@
             <property name="eclipselink.logging.parameters" value="true"/>
             <property name="eclipselink.cache.shared.default" value="true"/>
             <property name="eclipselink.cache.size.default" value="1000"/>
-            <property name="eclipselink.session.customizer" value="me.zinch.is.islab3.cache.InfinispanSessionCustomizer"/>
+            <property name="eclipselink.session.customizer" value="me.zinch.is.islab3.server.cache.InfinispanSessionCustomizer"/>
         </properties>
     </persistence-unit>
 </persistence>

@@ -16,7 +16,7 @@
             fail-all-connections="false"
             non-transactional-connections="true"
             allow-non-component-callers="true">
-        <property name="url" value="jdbc:postgresql://localhost:5432/is_lab3?stringtype=unspecified&amp;connectTimeout=1&amp;socketTimeout=2&amp;tcpKeepAlive=true"/>
+        <property name="url" value="jdbc:postgresql://localhost:5432/is_lab3?stringtype=unspecified&amp;connectTimeout=5&amp;socketTimeout=5&amp;tcpKeepAlive=true"/>
         <property name="user" value="postgres"/>
         <property name="password" value="0f9640a4311481256172499ae1f01f6ba23c246166f68c1baf9d14c4a65ce5bc"/>
         <property name="driverClassName" value="org.postgresql.Driver"/>
