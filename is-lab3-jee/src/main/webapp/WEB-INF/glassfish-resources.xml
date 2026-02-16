@@ -6,7 +6,7 @@
     <jdbc-connection-pool
             name="PostgresDruidPool"
             res-type="javax.sql.DataSource"
-            datasource-classname="me.zinch.is.islab3.datasource.GlassfishDruidDataSource"
+            datasource-classname="me.zinch.is.islab3.server.datasource.GlassfishDruidDataSource"
             steady-pool-size="1"
             max-pool-size="30"
             pool-resize-quantity="2"

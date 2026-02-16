@@ -9,8 +9,8 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import me.zinch.is.islab3.cache.L2CacheStatsService;
-import me.zinch.is.islab3.cache.L2CacheStatsToggleRequestDto;
+import me.zinch.is.islab3.server.cache.L2CacheStatsService;
+import me.zinch.is.islab3.server.cache.L2CacheStatsToggleRequestDto;
 import me.zinch.is.islab3.exceptions.ForbiddenException;
 import me.zinch.is.islab3.server.context.CurrentUser;
 

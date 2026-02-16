@@ -1,6 +1,6 @@
 package me.zinch.is.islab3.models.dao.support;
 
-import me.zinch.is.islab3.cache.InfinispanL2CacheBridge;
+import me.zinch.is.islab3.server.cache.InfinispanL2CacheBridge;
 import me.zinch.is.islab3.models.fields.EntityField;
 import me.zinch.is.islab3.models.fields.Filter;
 

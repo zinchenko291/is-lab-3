@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;
 import org.eclipse.persistence.annotations.CacheInterceptor;
-import me.zinch.is.islab3.cache.InfinispanEclipseLinkCacheInterceptor;
+import me.zinch.is.islab3.server.cache.InfinispanEclipseLinkCacheInterceptor;
 
 @Entity
 @CacheInterceptor(InfinispanEclipseLinkCacheInterceptor.class)

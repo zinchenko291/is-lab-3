@@ -10,9 +10,9 @@ import me.zinch.is.islab3.models.dao.support.DaoExceptionSupport;
 import me.zinch.is.islab3.models.dao.support.DaoQueryCacheFallbackSupport;
 import me.zinch.is.islab3.models.fields.EntityField;
 import me.zinch.is.islab3.models.fields.Filter;
-import me.zinch.is.islab3.cache.DatabaseFailureDetector;
-import me.zinch.is.islab3.cache.InfinispanL2CacheBridge;
-import me.zinch.is.islab3.cache.LogL2CacheStats;
+import me.zinch.is.islab3.server.cache.DatabaseFailureDetector;
+import me.zinch.is.islab3.server.cache.InfinispanL2CacheBridge;
+import me.zinch.is.islab3.server.cache.LogL2CacheStats;
 
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;

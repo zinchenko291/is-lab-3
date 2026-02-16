@@ -8,7 +8,7 @@ import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
 import jakarta.validation.ConstraintViolationException;
 import me.zinch.is.islab3.exceptions.ConstraintException;
-import me.zinch.is.islab3.cache.InfinispanL2CacheBridge;
+import me.zinch.is.islab3.server.cache.InfinispanL2CacheBridge;
 import me.zinch.is.islab3.models.dao.helpers.VehicleFieldConverter;
 import me.zinch.is.islab3.models.dao.interfaces.IVehicleDao;
 import me.zinch.is.islab3.models.entities.Coordinates;

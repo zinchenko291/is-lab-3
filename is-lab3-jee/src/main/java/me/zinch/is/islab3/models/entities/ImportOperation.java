@@ -2,7 +2,7 @@ package me.zinch.is.islab3.models.entities;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import me.zinch.is.islab3.cache.InfinispanEclipseLinkCacheInterceptor;
+import me.zinch.is.islab3.server.cache.InfinispanEclipseLinkCacheInterceptor;
 import org.eclipse.persistence.annotations.CacheInterceptor;
 
 import java.util.Date;

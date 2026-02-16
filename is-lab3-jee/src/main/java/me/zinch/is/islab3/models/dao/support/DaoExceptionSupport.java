@@ -1,7 +1,7 @@
 package me.zinch.is.islab3.models.dao.support;
 
 import jakarta.persistence.PersistenceException;
-import me.zinch.is.islab3.cache.DatabaseFailureDetector;
+import me.zinch.is.islab3.server.cache.DatabaseFailureDetector;
 import me.zinch.is.islab3.exceptions.ConflictException;
 import me.zinch.is.islab3.exceptions.ConstraintException;
 import me.zinch.is.islab3.exceptions.StorageUnavailableException;
