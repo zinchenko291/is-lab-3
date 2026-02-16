@@ -1,5 +1,9 @@
 package me.zinch.is.islab3.models.dao.implementations;
 
+import jakarta.inject.Inject;
+import jakarta.persistence.*;
+import jakarta.persistence.criteria.*;
+import jakarta.validation.ConstraintViolationException;
 import me.zinch.is.islab3.Config;
 import me.zinch.is.islab3.exceptions.ConstraintException;
 import me.zinch.is.islab3.exceptions.FieldValueConvertException;
@@ -14,19 +18,11 @@ import me.zinch.is.islab3.server.cache.DatabaseFailureDetector;
 import me.zinch.is.islab3.server.cache.InfinispanL2CacheBridge;
 import me.zinch.is.islab3.server.cache.LogL2CacheStats;
 
-import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.PersistenceException;
-import jakarta.persistence.Query;
-import jakarta.persistence.TypedQuery;
-import jakarta.persistence.criteria.*;
-import jakarta.validation.ConstraintViolationException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 @LogL2CacheStats
@@ -51,25 +47,27 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
 
     @Override
     public Optional<T> findById(Integer id) {
-        if (databaseFailureDetector.isDatabaseLikelyDown()) {
-            Object cached = InfinispanL2CacheBridge.get(entityClass.getName(), id);
-            if (entityClass.isInstance(cached)) {
-                return Optional.of(entityClass.cast(cached));
-            }
+        java.util.logging.Logger logger = Logger.getLogger("abstract dao");
+        long start = System.nanoTime();
+
+        Optional<T> cached = (Optional<T>) InfinispanL2CacheBridge.get(entityClass.getName(), id);
+        if (cached != null && cached.isPresent()) {
+            long end = System.nanoTime();
+            logger.warning(String.format("with cache: %s", end - start));
+            return cached;
         }
         try {
             Optional<T> result = Optional.ofNullable(em.find(entityClass, id));
             databaseFailureDetector.markSuccess();
+            long end = System.nanoTime();
+            logger.warning(String.format("with db: %s", end - start));
+            InfinispanL2CacheBridge.put(entityClass.getName(), id, result);
             return result;
         } catch (PersistenceException e) {
             if (!databaseFailureDetector.isDbCommunicationFailure(e)) {
                 throw e;
             }
             databaseFailureDetector.markFailure(e);
-            Object cached = InfinispanL2CacheBridge.get(entityClass.getName(), id);
-            if (entityClass.isInstance(cached)) {
-                return Optional.of(entityClass.cast(cached));
-            }
             throw unavailableReadException("findById", e);
         }
     }

@@ -72,7 +72,7 @@ const SignInPage = () => {
 
       localStorage.setItem(PRIVATE_KEY_STORAGE_KEY, pem);
       setSavedKey(pem);
-      navigate('/');
+      navigate('/specials');
     } catch (err) {
       console.error(err);
       setError('Не удалось выполнить вход.');
