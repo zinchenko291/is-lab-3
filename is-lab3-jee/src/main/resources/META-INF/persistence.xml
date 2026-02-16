@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
+             version="3.0">
+    <persistence-unit name="postgres">
+        <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+        <jta-data-source>java:app/jdbc/postgres</jta-data-source>
+        <class>me.zinch.is.islab3.models.entities.Coordinates</class>
+        <class>me.zinch.is.islab3.models.entities.ImportConflict</class>
+        <class>me.zinch.is.islab3.models.entities.ImportOperation</class>
+        <class>me.zinch.is.islab3.models.entities.User</class>
+        <class>me.zinch.is.islab3.models.entities.Vehicle</class>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+        <shared-cache-mode>ALL</shared-cache-mode>
+        <properties>
+            <property name="eclipselink.logging.level.sql" value="WARNING"/>
+            <property name="eclipselink.logging.parameters" value="true"/>
+            <property name="eclipselink.cache.shared.default" value="true"/>
+            <property name="eclipselink.cache.size.default" value="1000"/>
+            <property name="eclipselink.session.customizer" value="me.zinch.is.islab3.cache.InfinispanSessionCustomizer"/>
+        </properties>
+    </persistence-unit>
+</persistence>

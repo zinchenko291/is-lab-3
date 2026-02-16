@@ -1,0 +1,6 @@
+ALTER TABLE import_operations
+    ADD COLUMN IF NOT EXISTS sourcefilename VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS sourcecontenttype VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS sourcefilesize BIGINT,
+    ADD COLUMN IF NOT EXISTS s3stagingkey VARCHAR(1024),
+    ADD COLUMN IF NOT EXISTS s3objectkey VARCHAR(1024);
