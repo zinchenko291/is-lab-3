@@ -23,12 +23,12 @@ public class L2CacheStatsInterceptor {
             return ctx.proceed();
         }
 
-        L2CacheStatsSnapshot before = statsService.snapshot();
+        L2CacheStatsSnapshot before = statsService.threadSnapshot();
 
         try {
             return ctx.proceed();
         } finally {
-            L2CacheStatsSnapshot after = statsService.snapshot();
+            L2CacheStatsSnapshot after = statsService.threadSnapshot();
             long hitDelta = after.getHitCount() - before.getHitCount();
             long missDelta = after.getMissCount() - before.getMissCount();
             long putDelta = after.getPutCount() - before.getPutCount();

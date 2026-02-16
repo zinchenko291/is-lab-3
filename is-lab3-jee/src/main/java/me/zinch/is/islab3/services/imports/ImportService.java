@@ -41,7 +41,6 @@ public class ImportService {
     private ImportProcessor importProcessor;
     private S3StorageService s3StorageService;
     private ImportFileTransactionCoordinator fileTxCoordinator;
-    private ImportFailureInjectionService failureInjectionService;
     private MailService mailService;
     private Event<WsEvent> wsEvent;
     private ImportService self;
@@ -59,7 +58,6 @@ public class ImportService {
                          ImportProcessor importProcessor,
                          S3StorageService s3StorageService,
                          ImportFileTransactionCoordinator fileTxCoordinator,
-                         ImportFailureInjectionService failureInjectionService,
                          MailService mailService,
                          Event<WsEvent> wsEvent) {
         this.importOperationDao = importOperationDao;
@@ -69,7 +67,6 @@ public class ImportService {
         this.importProcessor = importProcessor;
         this.s3StorageService = s3StorageService;
         this.fileTxCoordinator = fileTxCoordinator;
-        this.failureInjectionService = failureInjectionService;
         this.mailService = mailService;
         this.wsEvent = wsEvent;
     }
@@ -142,14 +139,6 @@ public class ImportService {
             throw new ResourceNotFoundException("Файл импорта недоступен");
         }
         return s3StorageService.download(key, operation.getSourceFileName());
-    }
-
-    public ImportFailureMode getFailureMode() {
-        return failureInjectionService.getMode();
-    }
-
-    public void setFailureMode(ImportFailureMode mode) {
-        failureInjectionService.setMode(mode);
     }
 
     private ImportOperation getOperationForUser(User user, Integer operationId) {
@@ -269,7 +258,6 @@ public class ImportService {
         try {
             operation = fileTxCoordinator.prepareFilePhase(operation);
             operation = self.updateOperation(operation);
-            failureInjectionService.failIfConfigured(ImportFailureMode.AFTER_S3_PREPARE_BEFORE_DB);
             String payload = fileTxCoordinator.loadPayload(operation);
             ImportProcessor.ImportResult result = importProcessor.processImport(operation, payload, resolutions);
             if (!result.conflicts().isEmpty()) {

@@ -6,14 +6,11 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import me.zinch.is.islab3.models.dto.imports.ImportConflictDto;
-import me.zinch.is.islab3.models.dto.imports.ImportFailureModeToggleDto;
 import me.zinch.is.islab3.models.dto.imports.ImportOperationDto;
-import me.zinch.is.islab3.exceptions.ForbiddenException;
 import me.zinch.is.islab3.models.entities.ImportConflictResolution;
 import me.zinch.is.islab3.models.entities.ImportFormat;
 import me.zinch.is.islab3.models.entities.User;
 import me.zinch.is.islab3.server.context.CurrentUser;
-import me.zinch.is.islab3.services.imports.ImportFailureMode;
 import me.zinch.is.islab3.services.imports.ImportService;
 import me.zinch.is.islab3.services.storage.S3StoredFile;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
@@ -116,29 +113,6 @@ public class ImportController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
                 .header("Access-Control-Expose-Headers", HttpHeaders.CONTENT_DISPOSITION)
                 .build();
-    }
-
-    @GET
-    @Path("failure-mode")
-    public Response getFailureMode() {
-        User user = currentUser.getUser();
-        if (!user.getIsAdmin()) {
-            throw new ForbiddenException("Forbidden");
-        }
-        return Response.ok(importService.getFailureMode()).build();
-    }
-
-    @PUT
-    @Path("failure-mode")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response setFailureMode(ImportFailureModeToggleDto request) {
-        User user = currentUser.getUser();
-        if (!user.getIsAdmin()) {
-            throw new ForbiddenException("Forbidden");
-        }
-        ImportFailureMode mode = request == null ? ImportFailureMode.NONE : request.getMode();
-        importService.setFailureMode(mode == null ? ImportFailureMode.NONE : mode);
-        return Response.ok(importService.getFailureMode()).build();
     }
 
     private ImportFormat resolveFormat(String formatParam, String filename) {

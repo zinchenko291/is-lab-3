@@ -19,6 +19,9 @@ public final class InfinispanL2CacheBridge {
     private static final AtomicLong HIT_COUNT = new AtomicLong(0);
     private static final AtomicLong MISS_COUNT = new AtomicLong(0);
     private static final AtomicLong PUT_COUNT = new AtomicLong(0);
+    // Per-thread counters are used for interceptor deltas so concurrent requests
+    // do not pollute each other's "this invocation" stats.
+    private static final ThreadLocal<long[]> THREAD_COUNTS = ThreadLocal.withInitial(() -> new long[3]);
 
     private InfinispanL2CacheBridge() {
     }
@@ -53,14 +56,17 @@ public final class InfinispanL2CacheBridge {
 
     public static void incHit() {
         HIT_COUNT.incrementAndGet();
+        THREAD_COUNTS.get()[0]++;
     }
 
     public static void incMiss() {
         MISS_COUNT.incrementAndGet();
+        THREAD_COUNTS.get()[1]++;
     }
 
     public static void incPut() {
         PUT_COUNT.incrementAndGet();
+        THREAD_COUNTS.get()[2]++;
     }
 
     public static Object getQueryResult(String key) {
@@ -85,6 +91,18 @@ public final class InfinispanL2CacheBridge {
 
     public static long getPutCount() {
         return PUT_COUNT.get();
+    }
+
+    public static long getThreadHitCount() {
+        return THREAD_COUNTS.get()[0];
+    }
+
+    public static long getThreadMissCount() {
+        return THREAD_COUNTS.get()[1];
+    }
+
+    public static long getThreadPutCount() {
+        return THREAD_COUNTS.get()[2];
     }
 
     private static String toKey(String entityName, Object primaryKey) {

@@ -24,4 +24,13 @@ public class L2CacheStatsService {
                 InfinispanL2CacheBridge.getPutCount()
         );
     }
+
+    public L2CacheStatsSnapshot threadSnapshot() {
+        return new L2CacheStatsSnapshot(
+                isLoggingEnabled(),
+                InfinispanL2CacheBridge.getThreadHitCount(),
+                InfinispanL2CacheBridge.getThreadMissCount(),
+                InfinispanL2CacheBridge.getThreadPutCount()
+        );
+    }
 }

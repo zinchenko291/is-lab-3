@@ -79,7 +79,7 @@ public class AwsS3StorageService implements S3StorageService {
         if (stagingKey == null || stagingKey.isBlank()) {
             return;
         }
-        deleteQuiet(stagingKey);
+        delete(stagingKey);
     }
 
     @Override
@@ -87,7 +87,7 @@ public class AwsS3StorageService implements S3StorageService {
         if (committedKey == null || committedKey.isBlank()) {
             return;
         }
-        deleteQuiet(committedKey);
+        delete(committedKey);
     }
 
     @Override
@@ -122,7 +122,7 @@ public class AwsS3StorageService implements S3StorageService {
         }
     }
 
-    private void deleteQuiet(String key) {
+    private void delete(String key) {
         try {
             s3.deleteObject(DeleteObjectRequest.builder()
                     .bucket(Config.S3_BUCKET)
