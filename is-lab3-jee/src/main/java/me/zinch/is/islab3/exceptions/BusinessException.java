@@ -7,6 +7,11 @@ public abstract class BusinessException extends RuntimeException {
         this.status = status;
     }
 
+    protected BusinessException(String message, Integer status, Throwable cause) {
+        super(message, cause);
+        this.status = status;
+    }
+
     public Integer getStatus() {
         return status;
     }

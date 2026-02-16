@@ -7,12 +7,11 @@
             name="PostgresDruidPool"
             res-type="javax.sql.DataSource"
             datasource-classname="me.zinch.is.islab3.datasource.GlassfishDruidDataSource"
-            steady-pool-size="5"
+            steady-pool-size="1"
             max-pool-size="30"
             pool-resize-quantity="2"
             idle-timeout-in-seconds="300"
-            connection-validation-method="table"
-            validation-table-name="pg_catalog.pg_class"
+            connection-validation-method="auto-commit"
             is-connection-validation-required="true"
             fail-all-connections="false"
             non-transactional-connections="true"
@@ -21,22 +20,23 @@
         <property name="user" value="postgres"/>
         <property name="password" value="0f9640a4311481256172499ae1f01f6ba23c246166f68c1baf9d14c4a65ce5bc"/>
         <property name="driverClassName" value="org.postgresql.Driver"/>
-        <property name="initialSize" value="5"/>
-        <property name="minIdle" value="5"/>
+        <property name="initialSize" value="1"/>
+        <property name="minIdle" value="1"/>
         <property name="maxActive" value="30"/>
         <property name="maxWait" value="3000"/>
-        <property name="loginTimeout" value="5"/>
+        <property name="loginTimeout" value="2"/>
         <property name="validationQuery" value="SELECT 1"/>
+        <property name="validationQueryTimeout" value="2"/>
         <property name="testWhileIdle" value="true"/>
         <property name="testOnBorrow" value="true"/>
         <property name="testOnReturn" value="false"/>
-        <property name="timeBetweenEvictionRunsMillis" value="60000"/>
+        <property name="timeBetweenEvictionRunsMillis" value="10000"/>
         <property name="minEvictableIdleTimeMillis" value="300000"/>
         <property name="keepAlive" value="true"/>
         <property name="failFast" value="false"/>
         <property name="breakAfterAcquireFailure" value="false"/>
         <property name="connectionErrorRetryAttempts" value="2147483647"/>
-        <property name="timeBetweenConnectErrorMillis" value="3000"/>
+        <property name="timeBetweenConnectErrorMillis" value="5000"/>
     </jdbc-connection-pool>
 
     <jdbc-resource

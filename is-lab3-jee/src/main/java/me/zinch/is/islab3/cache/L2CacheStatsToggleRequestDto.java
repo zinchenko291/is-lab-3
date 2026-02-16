@@ -1,9 +1,9 @@
 package me.zinch.is.islab3.cache;
 
-public class L2CacheStatsToggleRequest {
+public class L2CacheStatsToggleRequestDto {
     private boolean enabled;
 
-    public L2CacheStatsToggleRequest() {
+    public L2CacheStatsToggleRequestDto() {
     }
 
     public boolean isEnabled() {

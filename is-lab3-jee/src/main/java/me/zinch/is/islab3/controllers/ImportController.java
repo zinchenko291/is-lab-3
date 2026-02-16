@@ -13,12 +13,13 @@ import me.zinch.is.islab3.models.entities.ImportConflictResolution;
 import me.zinch.is.islab3.models.entities.ImportFormat;
 import me.zinch.is.islab3.models.entities.User;
 import me.zinch.is.islab3.server.context.CurrentUser;
-import me.zinch.is.islab3.services.ImportService;
 import me.zinch.is.islab3.services.imports.ImportFailureMode;
+import me.zinch.is.islab3.services.imports.ImportService;
 import me.zinch.is.islab3.services.storage.S3StoredFile;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
@@ -40,7 +41,7 @@ public class ImportController {
                                    @FormDataParam("file") FormDataContentDisposition details,
                                    @QueryParam("format") String format) {
         User user = currentUser.getUser();
-        if (file == null) {
+        if (file == null || details == null) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("Файл обязателен")
                     .build();
@@ -66,7 +67,7 @@ public class ImportController {
                     content
             );
             return Response.ok(operation).build();
-        } catch (Exception e) {
+        } catch (IOException e) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("Не удалось прочитать загрузку")
                     .build();
@@ -113,6 +114,7 @@ public class ImportController {
         String contentType = storedFile.contentType() == null ? MediaType.APPLICATION_OCTET_STREAM : storedFile.contentType();
         return Response.ok(storedFile.content(), contentType)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                .header("Access-Control-Expose-Headers", HttpHeaders.CONTENT_DISPOSITION)
                 .build();
     }
 
@@ -161,3 +163,4 @@ public class ImportController {
     }
 
 }
+

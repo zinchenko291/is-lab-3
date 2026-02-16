@@ -1,4 +1,4 @@
-package me.zinch.is.islab3.services;
+package me.zinch.is.islab3.services.imports;
 
 import jakarta.annotation.Resource;
 import jakarta.enterprise.concurrent.ManagedExecutorService;
@@ -15,21 +15,14 @@ import me.zinch.is.islab3.models.dto.imports.ImportConflictDto;
 import me.zinch.is.islab3.models.dto.imports.ImportConflictMapper;
 import me.zinch.is.islab3.models.dto.imports.ImportOperationDto;
 import me.zinch.is.islab3.models.dto.imports.ImportOperationMapper;
-import me.zinch.is.islab3.models.entities.ImportConflict;
-import me.zinch.is.islab3.models.entities.ImportConflictResolution;
-import me.zinch.is.islab3.models.entities.ImportFormat;
-import me.zinch.is.islab3.models.entities.ImportOperation;
-import me.zinch.is.islab3.models.entities.ImportStatus;
-import me.zinch.is.islab3.models.entities.User;
+import me.zinch.is.islab3.models.entities.*;
 import me.zinch.is.islab3.models.events.ws.WsEvent;
 import me.zinch.is.islab3.models.ws.WsAction;
 import me.zinch.is.islab3.models.ws.WsEntity;
-import me.zinch.is.islab3.services.imports.ImportFailureInjectionService;
-import me.zinch.is.islab3.services.imports.ImportFailureMode;
+import me.zinch.is.islab3.services.MailService;
 import me.zinch.is.islab3.services.storage.S3StorageService;
 import me.zinch.is.islab3.services.storage.S3StoredFile;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +40,7 @@ public class ImportService {
     private ImportConflictMapper importConflictMapper;
     private ImportProcessor importProcessor;
     private S3StorageService s3StorageService;
+    private ImportFileTransactionCoordinator fileTxCoordinator;
     private ImportFailureInjectionService failureInjectionService;
     private MailService mailService;
     private Event<WsEvent> wsEvent;
@@ -64,6 +58,7 @@ public class ImportService {
                          ImportConflictMapper importConflictMapper,
                          ImportProcessor importProcessor,
                          S3StorageService s3StorageService,
+                         ImportFileTransactionCoordinator fileTxCoordinator,
                          ImportFailureInjectionService failureInjectionService,
                          MailService mailService,
                          Event<WsEvent> wsEvent) {
@@ -73,6 +68,7 @@ public class ImportService {
         this.importConflictMapper = importConflictMapper;
         this.importProcessor = importProcessor;
         this.s3StorageService = s3StorageService;
+        this.fileTxCoordinator = fileTxCoordinator;
         this.failureInjectionService = failureInjectionService;
         this.mailService = mailService;
         this.wsEvent = wsEvent;
@@ -107,7 +103,7 @@ public class ImportService {
         ImportOperation operation = getOperationForUser(user, operationId);
         ImportConflict conflict = self.getConflict(conflictId);
         if (conflict.getOperation().getId() != operation.getId()) {
-            throw new ForbiddenException("Ð”Ð¾ÑÑ‚ÑƒÐ¿ Ð·Ð°Ð¿Ñ€ÐµÑ‰ÐµÐ½");
+            throw new ForbiddenException("Доступ запрещен");
         }
         self.updateConflictResolution(conflict, resolution);
 
@@ -158,9 +154,9 @@ public class ImportService {
 
     private ImportOperation getOperationForUser(User user, Integer operationId) {
         ImportOperation operation = importOperationDao.findById(operationId)
-                .orElseThrow(() -> new ResourceNotFoundException("ÐžÐ¿ÐµÑ€Ð°Ñ†Ð¸Ñ Ð¸Ð¼Ð¿Ð¾Ñ€Ñ‚Ð° Ð½Ðµ Ð½Ð°Ð¹Ð´ÐµÐ½Ð°"));
+                .orElseThrow(() -> new ResourceNotFoundException("Операция импорта не найдена"));
         if (!user.getIsAdmin() && operation.getUser().getId() != user.getId()) {
-            throw new ForbiddenException("Ð”Ð¾ÑÑ‚ÑƒÐ¿ Ð·Ð°Ð¿Ñ€ÐµÑ‰ÐµÐ½");
+            throw new ForbiddenException("Доступ запрещен");
         }
         return operation;
     }
@@ -209,7 +205,7 @@ public class ImportService {
             return;
         }
         operation.setStatus(ImportStatus.FAILED);
-        operation.setErrorMessage("Ð¤Ð°Ð¹Ð» Ð¸Ð¼Ð¿Ð¾Ñ€Ñ‚Ð° Ð½ÐµÐ´Ð¾ÑÑ‚ÑƒÐ¿ÐµÐ½ (Ð¸ÑÑ‚ÐµÐº Ð¿ÐµÑ€Ð¸Ð¾Ð´ Ñ…Ñ€Ð°Ð½ÐµÐ½Ð¸Ñ)");
+        operation.setErrorMessage("Файл импорта недоступен (истек период хранения)");
         operation.setCompletedAt(new Date());
         updateOperation(operation);
         ImportOperationDto dto = importOperationMapper.entityToDto(operation);
@@ -219,7 +215,7 @@ public class ImportService {
     @Transactional(TxType.REQUIRES_NEW)
     public ImportConflict getConflict(Integer conflictId) {
         return importConflictDao.findById(conflictId)
-                .orElseThrow(() -> new ResourceNotFoundException("ÐšÐ¾Ð½Ñ„Ð»Ð¸ÐºÑ‚ Ð½Ðµ Ð½Ð°Ð¹Ð´ÐµÐ½"));
+                .orElseThrow(() -> new ResourceNotFoundException("Конфликт не найден"));
     }
 
     @Transactional(TxType.REQUIRES_NEW)
@@ -253,7 +249,7 @@ public class ImportService {
         if (e.getMessage() != null && !e.getMessage().isBlank()) {
             return e.getMessage();
         }
-        return "ÐžÑˆÐ¸Ð±ÐºÐ°: " + e.getClass().getSimpleName();
+        return "Ошибка: " + e.getClass().getSimpleName();
     }
 
     private void submitImport(Integer operationId, Map<Integer, ImportConflictResolution> resolutions) {
@@ -271,9 +267,10 @@ public class ImportService {
         }
         boolean dbCompleted = false;
         try {
-            operation = prepareFilePhase(operation);
+            operation = fileTxCoordinator.prepareFilePhase(operation);
+            operation = self.updateOperation(operation);
             failureInjectionService.failIfConfigured(ImportFailureMode.AFTER_S3_PREPARE_BEFORE_DB);
-            String payload = loadPayload(operation);
+            String payload = fileTxCoordinator.loadPayload(operation);
             ImportProcessor.ImportResult result = importProcessor.processImport(operation, payload, resolutions);
             if (!result.conflicts().isEmpty()) {
                 dbCompleted = true;
@@ -285,13 +282,13 @@ public class ImportService {
                 operation.setStatus(ImportStatus.SUCCEEDED);
                 operation.setAddedCount(result.added());
                 operation.setCompletedAt(new Date());
-                operation = finishFileCommit(operation);
+                operation = fileTxCoordinator.finishFileCommit(operation);
                 operation = self.updateOperation(operation);
             }
         } catch (RuntimeException e) {
             LOGGER.log(Level.WARNING, "Import failed for operation id=" + operation.getId(), e);
             if (!dbCompleted) {
-                rollbackFilePhase(operation);
+                fileTxCoordinator.rollbackFilePhase(operation);
             }
             operation.setStatus(ImportStatus.FAILED);
             operation.setErrorMessage(buildErrorMessage(e));
@@ -301,52 +298,5 @@ public class ImportService {
 
         ImportOperationDto dto = importOperationMapper.entityToDto(operation);
         wsEvent.fire(new WsEvent(WsEntity.IMPORT_OPERATION, WsAction.STATUS, operation.getId(), dto));
-    }
-
-    private ImportOperation prepareFilePhase(ImportOperation operation) {
-        if (operation.getS3ObjectKey() != null && !operation.getS3ObjectKey().isBlank()) {
-            return operation;
-        }
-        String stagingKey = operation.getS3StagingKey();
-        if (stagingKey == null || stagingKey.isBlank()) {
-            throw new ResourceNotFoundException("Файл импорта недоступен в S3");
-        }
-        String committedKey = s3StorageService.prepareCommitted(
-                operation.getId(),
-                stagingKey,
-                operation.getSourceFileName(),
-                operation.getSourceContentType()
-        );
-        operation.setS3ObjectKey(committedKey);
-        return self.updateOperation(operation);
-    }
-
-    private ImportOperation finishFileCommit(ImportOperation operation) {
-        s3StorageService.commitPrepared(operation.getId(), operation.getS3StagingKey());
-        operation.setS3StagingKey(null);
-        return operation;
-    }
-
-    private void rollbackFilePhase(ImportOperation operation) {
-        if (operation.getS3ObjectKey() != null && !operation.getS3ObjectKey().isBlank()) {
-            s3StorageService.rollbackPrepared(operation.getId(), operation.getS3ObjectKey());
-            operation.setS3ObjectKey(null);
-        }
-        if (operation.getS3StagingKey() != null && !operation.getS3StagingKey().isBlank()) {
-            s3StorageService.commitPrepared(operation.getId(), operation.getS3StagingKey());
-            operation.setS3StagingKey(null);
-        }
-    }
-
-    private String loadPayload(ImportOperation operation) {
-        String key = operation.getS3ObjectKey();
-        if (key == null || key.isBlank()) {
-            key = operation.getS3StagingKey();
-        }
-        if (key == null || key.isBlank()) {
-            throw new ResourceNotFoundException("Файл импорта недоступен в S3");
-        }
-        S3StoredFile file = s3StorageService.download(key, operation.getSourceFileName());
-        return new String(file.content(), StandardCharsets.UTF_8);
     }
 }

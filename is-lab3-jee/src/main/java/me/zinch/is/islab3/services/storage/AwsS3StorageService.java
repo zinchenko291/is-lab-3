@@ -3,6 +3,7 @@ package me.zinch.is.islab3.services.storage;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import me.zinch.is.islab3.Config;
+import me.zinch.is.islab3.exceptions.StorageUnavailableException;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -27,6 +28,7 @@ import java.util.UUID;
 @ApplicationScoped
 public class AwsS3StorageService implements S3StorageService {
     private S3Client s3;
+    private volatile boolean bucketReady;
 
     @PostConstruct
     public void init() {
@@ -39,14 +41,13 @@ public class AwsS3StorageService implements S3StorageService {
                 .serviceConfiguration(S3Configuration.builder()
                         .pathStyleAccessEnabled(true)
                         .chunkedEncodingEnabled(false)
-                        .checksumValidationEnabled(false)
                         .build())
                 .build();
-        ensureBucketExists();
     }
 
     @Override
     public String uploadStaging(Integer operationId, String fileName, String contentType, byte[] content) {
+        ensureBucketExists();
         String safeFileName = sanitizeFileName(fileName);
         String key = "imports/staging/op-" + operationId + "/" + UUID.randomUUID() + "-" + safeFileName;
         putObject(key, contentType, content);
@@ -55,6 +56,7 @@ public class AwsS3StorageService implements S3StorageService {
 
     @Override
     public String prepareCommitted(Integer operationId, String stagingKey, String fileName, String contentType) {
+        ensureBucketExists();
         String safeFileName = sanitizeFileName(fileName);
         String committedKey = "imports/committed/op-" + operationId + "/" + safeFileName;
         try {
@@ -68,7 +70,7 @@ public class AwsS3StorageService implements S3StorageService {
                     .build());
             return committedKey;
         } catch (Exception e) {
-            throw new S3StorageException("Failed to prepare import file in S3", e);
+            throw new StorageUnavailableException("S3 недоступно: не удалось подготовить файл импорта", e);
         }
     }
 
@@ -101,9 +103,9 @@ public class AwsS3StorageService implements S3StorageService {
             String contentType = in.response().contentType();
             return new S3StoredFile(key, fileName, contentType, bytes);
         } catch (IOException e) {
-            throw new S3StorageException("Failed to read import file from S3", e);
+            throw new StorageUnavailableException("S3 недоступно: не удалось прочитать файл импорта", e);
         } catch (Exception e) {
-            throw new S3StorageException("Failed to download import file from S3", e);
+            throw new StorageUnavailableException("S3 недоступно: не удалось скачать файл импорта", e);
         }
     }
 
@@ -116,7 +118,7 @@ public class AwsS3StorageService implements S3StorageService {
                             .build(),
                     RequestBody.fromBytes(content));
         } catch (Exception e) {
-            throw new S3StorageException("Failed to upload import file to S3", e);
+            throw new StorageUnavailableException("S3 недоступно: не удалось загрузить файл импорта", e);
         }
     }
 
@@ -131,13 +133,29 @@ public class AwsS3StorageService implements S3StorageService {
     }
 
     private void ensureBucketExists() {
+        if (bucketReady) {
+            return;
+        }
         try {
             s3.headBucket(HeadBucketRequest.builder().bucket(Config.S3_BUCKET).build());
+            bucketReady = true;
         } catch (NoSuchBucketException e) {
-            s3.createBucket(CreateBucketRequest.builder().bucket(Config.S3_BUCKET).build());
+            try {
+                s3.createBucket(CreateBucketRequest.builder().bucket(Config.S3_BUCKET).build());
+                bucketReady = true;
+            } catch (Exception createError) {
+                throw new StorageUnavailableException("S3 недоступно: не удалось создать bucket", createError);
+            }
         } catch (Exception e) {
             if (!bucketExistsByListing()) {
-                s3.createBucket(CreateBucketRequest.builder().bucket(Config.S3_BUCKET).build());
+                try {
+                    s3.createBucket(CreateBucketRequest.builder().bucket(Config.S3_BUCKET).build());
+                    bucketReady = true;
+                } catch (Exception createError) {
+                    throw new StorageUnavailableException("S3 недоступно: не удалось создать bucket", createError);
+                }
+            } else {
+                bucketReady = true;
             }
         }
     }

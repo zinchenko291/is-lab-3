@@ -6,12 +6,6 @@
     <persistence-unit name="postgres">
         <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
         <jta-data-source>java:app/jdbc/postgres</jta-data-source>
-        <class>me.zinch.is.islab3.models.entities.Coordinates</class>
-        <class>me.zinch.is.islab3.models.entities.ImportConflict</class>
-        <class>me.zinch.is.islab3.models.entities.ImportOperation</class>
-        <class>me.zinch.is.islab3.models.entities.User</class>
-        <class>me.zinch.is.islab3.models.entities.Vehicle</class>
-        <exclude-unlisted-classes>true</exclude-unlisted-classes>
         <shared-cache-mode>ALL</shared-cache-mode>
         <properties>
             <property name="eclipselink.logging.level.sql" value="WARNING"/>

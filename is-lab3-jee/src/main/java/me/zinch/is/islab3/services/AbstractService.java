@@ -3,19 +3,18 @@ package me.zinch.is.islab3.services;
 import jakarta.enterprise.event.Event;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.transaction.Transactional.TxType;
 import jakarta.transaction.Transactional;
 import me.zinch.is.islab3.Config;
 import me.zinch.is.islab3.exceptions.ResourceNotFoundException;
 import me.zinch.is.islab3.models.dao.interfaces.IDao;
 import me.zinch.is.islab3.models.dto.IMapper;
+import me.zinch.is.islab3.models.events.ws.WsEvent;
 import me.zinch.is.islab3.models.fields.EntityField;
 import me.zinch.is.islab3.models.fields.Filter;
 import me.zinch.is.islab3.models.fields.Page;
 import me.zinch.is.islab3.models.fields.SortDirection;
 import me.zinch.is.islab3.models.ws.WsAction;
 import me.zinch.is.islab3.models.ws.WsEntity;
-import me.zinch.is.islab3.models.events.ws.WsEvent;
 
 import java.util.List;
 
@@ -44,7 +43,6 @@ public abstract class AbstractService<E, F extends EntityField, D, I> {
         this.wsEvent = wsEvent;
     }
 
-    @Transactional(TxType.SUPPORTS)
     public Page<D> findAll(F field, String value, SortDirection orderBy, Integer pageSize, Integer page) {
         Filter<F> filter = new Filter<>(field, value, orderBy);
         Long counter = dao.countPaged(filter);
@@ -55,7 +53,6 @@ public abstract class AbstractService<E, F extends EntityField, D, I> {
         );
     }
 
-    @Transactional(TxType.SUPPORTS)
     public D findById(Integer id) {
         return dao.findById(id)
                 .map(this.mapper::entityToDto)

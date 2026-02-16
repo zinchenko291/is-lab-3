@@ -1,6 +1,9 @@
 package me.zinch.is.islab3.services;
 
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import me.zinch.is.islab3.exceptions.ForbiddenException;
 import me.zinch.is.islab3.exceptions.ResourceNotFoundException;
 import me.zinch.is.islab3.models.dao.implementations.CoordinatesDao;
@@ -9,19 +12,13 @@ import me.zinch.is.islab3.models.dto.coordinates.CoordinatesMapper;
 import me.zinch.is.islab3.models.dto.coordinates.CoordinatesWithoutIdDto;
 import me.zinch.is.islab3.models.entities.Coordinates;
 import me.zinch.is.islab3.models.entities.User;
+import me.zinch.is.islab3.models.events.ws.WsEvent;
 import me.zinch.is.islab3.models.fields.CoordinatesField;
 import me.zinch.is.islab3.models.fields.Filter;
 import me.zinch.is.islab3.models.fields.Page;
 import me.zinch.is.islab3.models.fields.SortDirection;
-
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
-import jakarta.transaction.Transactional.TxType;
 import me.zinch.is.islab3.models.ws.WsAction;
 import me.zinch.is.islab3.models.ws.WsEntity;
-import me.zinch.is.islab3.models.events.ws.WsEvent;
 
 
 @ApplicationScoped
@@ -76,7 +73,6 @@ public class CoordinatesService extends AbstractService<Coordinates, Coordinates
         return dto;
     }
 
-    @Transactional(TxType.SUPPORTS)
     public Page<CoordinatesDto> findAllForUser(User user, CoordinatesField field, String value, SortDirection orderBy, Integer pageSize, Integer page) {
         if (user.getIsAdmin()) {
             return super.findAll(field, value, orderBy, pageSize, page);
@@ -92,7 +88,6 @@ public class CoordinatesService extends AbstractService<Coordinates, Coordinates
         );
     }
 
-    @Transactional(TxType.SUPPORTS)
     public CoordinatesDto findByIdForUser(User user, Integer id) {
         Coordinates coordinates = coordinatesDao.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(getResourceExceptionMessage(id)));

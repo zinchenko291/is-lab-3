@@ -10,7 +10,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import me.zinch.is.islab3.cache.L2CacheStatsService;
-import me.zinch.is.islab3.cache.L2CacheStatsToggleRequest;
+import me.zinch.is.islab3.cache.L2CacheStatsToggleRequestDto;
 import me.zinch.is.islab3.exceptions.ForbiddenException;
 import me.zinch.is.islab3.server.context.CurrentUser;
 
@@ -36,7 +36,7 @@ public class L2CacheController {
 
     @PUT
     @Path("stats-logging")
-    public Response setLogging(@Valid L2CacheStatsToggleRequest request) {
+    public Response setLogging(@Valid L2CacheStatsToggleRequestDto request) {
         ensureAdmin();
         statsService.setLoggingEnabled(request.isEnabled());
         return Response.ok(statsService.snapshot()).build();

@@ -4,7 +4,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import jakarta.transaction.Transactional.TxType;
 import me.zinch.is.islab3.exceptions.ForbiddenException;
 import me.zinch.is.islab3.exceptions.ResourceNotFoundException;
 import me.zinch.is.islab3.models.dao.implementations.CoordinatesDao;
@@ -16,14 +15,10 @@ import me.zinch.is.islab3.models.entities.Coordinates;
 import me.zinch.is.islab3.models.entities.FuelType;
 import me.zinch.is.islab3.models.entities.User;
 import me.zinch.is.islab3.models.entities.Vehicle;
-import me.zinch.is.islab3.models.fields.Filter;
-import me.zinch.is.islab3.models.fields.Page;
-import me.zinch.is.islab3.models.fields.Range;
-import me.zinch.is.islab3.models.fields.SortDirection;
-import me.zinch.is.islab3.models.fields.VehicleField;
+import me.zinch.is.islab3.models.events.ws.WsEvent;
+import me.zinch.is.islab3.models.fields.*;
 import me.zinch.is.islab3.models.ws.WsAction;
 import me.zinch.is.islab3.models.ws.WsEntity;
-import me.zinch.is.islab3.models.events.ws.WsEvent;
 
 import java.util.List;
 
@@ -66,18 +61,16 @@ public class VehicleService extends AbstractService<Vehicle, VehicleField, Vehic
         return String.format("Не существует транспортного средства по id = %s", id);
     }
 
-    @Transactional(TxType.SUPPORTS)
     public VehicleDto findMinEnginePower() {
         return vehicleDao.findMinEnginePower()
                 .map(mapper::entityToDto)
                 .orElseThrow(() -> new ResourceNotFoundException("ТС с минимальной мощностью не найдено"));
     }
 
-    @Transactional(TxType.SUPPORTS)
     public Long countGtFuelType(FuelType fuelType) {
         return vehicleDao.countGtFuelType(fuelType);
     }
-    @Transactional(TxType.SUPPORTS)
+
     public Page<VehicleDto> findByNameSubstring(Integer page, Integer pageSize, String name) {
         List<Vehicle> vehicles = vehicleDao.findByNameSubstring(page, pageSize, name);
         Long total = vehicleDao.countByNameSubstring(name);
@@ -89,7 +82,6 @@ public class VehicleService extends AbstractService<Vehicle, VehicleField, Vehic
         return new Page<>(total, dtos);
     }
 
-    @Transactional(TxType.SUPPORTS)
     public Page<VehicleDto> findByEnginePowerRange(Integer page, Integer pageSize, Range<Integer> range) {
         List<Vehicle> vehicles = vehicleDao.findByEnginePowerRange(page, pageSize, range);
         Long total = vehicleDao.countByEnginePowerRange(range);
@@ -114,7 +106,6 @@ public class VehicleService extends AbstractService<Vehicle, VehicleField, Vehic
             );
     }
 
-    @Transactional(TxType.SUPPORTS)
     public Page<VehicleDto> findAllForUser(User user, VehicleField field, String value, SortDirection orderBy, Integer pageSize, Integer page) {
         if (user.getIsAdmin()) {
             return super.findAll(field, value, orderBy, pageSize, page);
@@ -130,7 +121,6 @@ public class VehicleService extends AbstractService<Vehicle, VehicleField, Vehic
         return new Page<>(counter, dtos);
     }
 
-    @Transactional(TxType.SUPPORTS)
     public VehicleDto findByIdForUser(User user, Integer id) {
         Vehicle vehicle = vehicleDao.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(getResourceExceptionMessage(id)));
@@ -184,7 +174,6 @@ public class VehicleService extends AbstractService<Vehicle, VehicleField, Vehic
         return mapper.entityToDto(vehicle);
     }
 
-    @Transactional(TxType.SUPPORTS)
     public VehicleDto findMinEnginePowerForUser(User user) {
         if (user.getIsAdmin()) {
             return findMinEnginePower();
@@ -194,7 +183,6 @@ public class VehicleService extends AbstractService<Vehicle, VehicleField, Vehic
                 .orElseThrow(() -> new ResourceNotFoundException("ТС с минимальной мощностью не найдено"));
     }
 
-    @Transactional(TxType.SUPPORTS)
     public Long countGtFuelTypeForUser(User user, FuelType fuelType) {
         if (user.getIsAdmin()) {
             return vehicleDao.countGtFuelType(fuelType);
@@ -202,7 +190,6 @@ public class VehicleService extends AbstractService<Vehicle, VehicleField, Vehic
         return vehicleDao.countGtFuelTypeByOwner(user.getId(), fuelType);
     }
 
-    @Transactional(TxType.SUPPORTS)
     public Page<VehicleDto> findByNameSubstringForUser(User user, Integer page, Integer pageSize, String name) {
         if (user.getIsAdmin()) {
             return findByNameSubstring(page, pageSize, name);
@@ -216,7 +203,6 @@ public class VehicleService extends AbstractService<Vehicle, VehicleField, Vehic
         return new Page<>(total, dtos);
     }
 
-    @Transactional(TxType.SUPPORTS)
     public Page<VehicleDto> findByEnginePowerRangeForUser(User user, Integer page, Integer pageSize, Range<Integer> range) {
         if (user.getIsAdmin()) {
             return findByEnginePowerRange(page, pageSize, range);

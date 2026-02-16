@@ -3,15 +3,18 @@ package me.zinch.is.islab3.models.dao.implementations;
 import me.zinch.is.islab3.Config;
 import me.zinch.is.islab3.exceptions.ConstraintException;
 import me.zinch.is.islab3.exceptions.FieldValueConvertException;
-import me.zinch.is.islab3.exceptions.ConflictException;
+import me.zinch.is.islab3.exceptions.StorageUnavailableException;
 import me.zinch.is.islab3.models.dao.interfaces.IConverter;
 import me.zinch.is.islab3.models.dao.interfaces.IDao;
+import me.zinch.is.islab3.models.dao.support.DaoExceptionSupport;
+import me.zinch.is.islab3.models.dao.support.DaoQueryCacheFallbackSupport;
 import me.zinch.is.islab3.models.fields.EntityField;
 import me.zinch.is.islab3.models.fields.Filter;
 import me.zinch.is.islab3.cache.DatabaseFailureDetector;
 import me.zinch.is.islab3.cache.InfinispanL2CacheBridge;
 import me.zinch.is.islab3.cache.LogL2CacheStats;
 
+import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
@@ -20,7 +23,6 @@ import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
 import jakarta.validation.ConstraintViolationException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +33,9 @@ import java.util.stream.Collectors;
 public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F> {
     @PersistenceContext(unitName = Config.UNIT_NAME)
     protected EntityManager em;
+
+    @Inject
+    protected DatabaseFailureDetector databaseFailureDetector;
 
     private final Class<T> entityClass;
     private IConverter converter;
@@ -46,7 +51,7 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
 
     @Override
     public Optional<T> findById(Integer id) {
-        if (DatabaseFailureDetector.isDatabaseLikelyDown()) {
+        if (databaseFailureDetector.isDatabaseLikelyDown()) {
             Object cached = InfinispanL2CacheBridge.get(entityClass.getName(), id);
             if (entityClass.isInstance(cached)) {
                 return Optional.of(entityClass.cast(cached));
@@ -54,18 +59,18 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
         }
         try {
             Optional<T> result = Optional.ofNullable(em.find(entityClass, id));
-            DatabaseFailureDetector.markSuccess();
+            databaseFailureDetector.markSuccess();
             return result;
         } catch (PersistenceException e) {
-            if (!DatabaseFailureDetector.isDbCommunicationFailure(e)) {
+            if (!databaseFailureDetector.isDbCommunicationFailure(e)) {
                 throw e;
             }
-            DatabaseFailureDetector.markFailure(e);
+            databaseFailureDetector.markFailure(e);
             Object cached = InfinispanL2CacheBridge.get(entityClass.getName(), id);
             if (entityClass.isInstance(cached)) {
                 return Optional.of(entityClass.cast(cached));
             }
-            throw e;
+            throw unavailableReadException("findById", e);
         }
     }
 
@@ -103,7 +108,7 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
         q.setMaxResults(pageSize);
         q.setFirstResult(page * pageSize);
         String cacheKey = "findAllPaged:" + entityClass.getName() + ":" + page + ":" + pageSize + ":" + filterKey(filter);
-        if (DatabaseFailureDetector.isDatabaseLikelyDown()) {
+        if (databaseFailureDetector.isDatabaseLikelyDown()) {
             Object cached = InfinispanL2CacheBridge.getQueryResult(cacheKey);
             if (cached != null) {
                 @SuppressWarnings("unchecked")
@@ -117,17 +122,17 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
         }
         try {
             List<T> result = q.getResultList();
-            DatabaseFailureDetector.markSuccess();
+            databaseFailureDetector.markSuccess();
             InfinispanL2CacheBridge.putQueryResult(cacheKey, result);
             return result;
         } catch (PersistenceException e) {
-            if (isFieldConversionError(e, filter)) {
+            if (DaoExceptionSupport.isFieldConversionError(e, filter)) {
                 throw new FieldValueConvertException(
                     String.format("Не удалось сконвертировать значение %s для поля %s", filter.getValue(), filter.getField().getValue())
                 );
             }
-            if (DatabaseFailureDetector.isDbCommunicationFailure(e)) {
-                DatabaseFailureDetector.markFailure(e);
+            if (databaseFailureDetector.isDbCommunicationFailure(e)) {
+                databaseFailureDetector.markFailure(e);
                 Object cached = InfinispanL2CacheBridge.getQueryResult(cacheKey);
                 if (cached != null) {
                     @SuppressWarnings("unchecked")
@@ -138,6 +143,7 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
                 if (fromAll != null) {
                     return fromAll;
                 }
+                throw unavailableReadException("findAllPaged", e);
             }
             throw e;
         }
@@ -166,7 +172,7 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
                 .where(predicates.toArray(new Predicate[0]));
 
         String cacheKey = "countPaged:" + entityClass.getName() + ":" + filterKey(filter);
-        if (DatabaseFailureDetector.isDatabaseLikelyDown()) {
+        if (databaseFailureDetector.isDatabaseLikelyDown()) {
             Object cached = InfinispanL2CacheBridge.getQueryResult(cacheKey);
             if (cached instanceof Long restored) {
                 return restored;
@@ -178,17 +184,17 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
         }
         try {
             Long result = cacheQuery(em.createQuery(cq)).getSingleResult();
-            DatabaseFailureDetector.markSuccess();
+            databaseFailureDetector.markSuccess();
             InfinispanL2CacheBridge.putQueryResult(cacheKey, result);
             return result;
         } catch (PersistenceException e) {
-            if (isFieldConversionError(e, filter)) {
+            if (DaoExceptionSupport.isFieldConversionError(e, filter)) {
                 throw new FieldValueConvertException(
                         String.format("Не удалось сконвертировать значение %s для поля %s", filter.getValue(), filter.getField().getValue())
                 );
             }
-            if (DatabaseFailureDetector.isDbCommunicationFailure(e)) {
-                DatabaseFailureDetector.markFailure(e);
+            if (databaseFailureDetector.isDbCommunicationFailure(e)) {
+                databaseFailureDetector.markFailure(e);
                 Object cached = InfinispanL2CacheBridge.getQueryResult(cacheKey);
                 if (cached instanceof Long restored) {
                     return restored;
@@ -197,6 +203,7 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
                 if (fromFindAll != null) {
                     return fromFindAll;
                 }
+                throw unavailableReadException("countPaged", e);
             }
             throw e;
         }
@@ -212,7 +219,7 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
         } catch (ConstraintViolationException e) {
             throw new ConstraintException(String.format("Ошибка валидации значения(ий). %s", getConstraintMessage(e)));
         } catch (PersistenceException e) {
-            throw mapPersistenceException(e);
+            throw DaoExceptionSupport.mapPersistenceException(e, databaseFailureDetector);
         }
     }
 
@@ -224,7 +231,7 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
             InfinispanL2CacheBridge.clearQueryCache();
             return merged;
         } catch (PersistenceException e) {
-            throw mapPersistenceException(e);
+            throw DaoExceptionSupport.mapPersistenceException(e, databaseFailureDetector);
         }
     }
 
@@ -236,7 +243,7 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
             InfinispanL2CacheBridge.clearQueryCache();
             return entity;
         } catch (PersistenceException e) {
-            throw mapPersistenceException(e);
+            throw DaoExceptionSupport.mapPersistenceException(e, databaseFailureDetector);
         }
     }
 
@@ -279,44 +286,6 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
                 .collect(Collectors.joining(", "));
     }
 
-    private RuntimeException mapPersistenceException(PersistenceException e) {
-        if (hasSqlState(e, "23505")) {
-            return new ConflictException("Нарушено ограничение уникальности.");
-        }
-        if (hasSqlState(e, "23503")) {
-            return new ConstraintException("Не удалось удалить сущность из-за связи.");
-        }
-        if (hasSqlState(e, "40001")) {
-            return new ConflictException("Конфликт транзакции. Повторите запрос.");
-        }
-        return e;
-    }
-
-    private boolean hasSqlState(Throwable ex, String sqlState) {
-        Throwable current = ex;
-        while (current != null) {
-            if (current instanceof SQLException && sqlState.equals(((SQLException) current).getSQLState())) {
-                return true;
-            }
-            current = current.getCause();
-        }
-        return false;
-    }
-
-    private boolean isFieldConversionError(PersistenceException e, Filter<F> filter) {
-        if (filter == null || filter.getValue() == null || filter.getValue().isEmpty()) {
-            return false;
-        }
-        Throwable current = e;
-        while (current != null) {
-            if (current instanceof NumberFormatException || current instanceof IllegalArgumentException) {
-                return true;
-            }
-            current = current.getCause();
-        }
-        return false;
-    }
-
     protected <Q extends Query> Q cacheQuery(Q query) {
         query.setHint("eclipselink.query-results-cache", "true");
         query.setHint("eclipselink.maintain-cache", "true");
@@ -324,7 +293,7 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
     }
 
     protected <R> R readThroughCache(String cacheKey, Supplier<R> dbQuery) {
-        if (DatabaseFailureDetector.isDatabaseLikelyDown()) {
+        if (databaseFailureDetector.isDatabaseLikelyDown()) {
             Object cached = InfinispanL2CacheBridge.getQueryResult(cacheKey);
             if (cached != null) {
                 @SuppressWarnings("unchecked")
@@ -334,75 +303,40 @@ public abstract class AbstractDao<T, F extends EntityField> implements IDao<T, F
         }
         try {
             R result = dbQuery.get();
-            DatabaseFailureDetector.markSuccess();
+            databaseFailureDetector.markSuccess();
             InfinispanL2CacheBridge.putQueryResult(cacheKey, result);
             return result;
         } catch (RuntimeException ex) {
-            if (!DatabaseFailureDetector.isDbCommunicationFailure(ex)) {
+            if (!databaseFailureDetector.isDbCommunicationFailure(ex)) {
                 throw ex;
             }
-            DatabaseFailureDetector.markFailure(ex);
+            databaseFailureDetector.markFailure(ex);
             Object cached = InfinispanL2CacheBridge.getQueryResult(cacheKey);
             if (cached != null) {
                 @SuppressWarnings("unchecked")
                 R restored = (R) cached;
                 return restored;
             }
-            throw ex;
+            throw unavailableReadException("readThroughCache", ex);
         }
     }
 
     protected String filterKey(Filter<F> filter) {
-        if (filter == null) {
-            return "null";
-        }
-        String field = filter.getField() == null ? "null" : filter.getField().getValue();
-        String value = filter.getValue() == null ? "null" : filter.getValue();
-        String direction = filter.getSortDirection() == null ? "null" : filter.getSortDirection().getValue();
-        return field + "|" + value + "|" + direction;
+        return DaoQueryCacheFallbackSupport.filterKey(filter);
     }
 
     private List<T> fallbackPageFromFindAllCache(Integer page, Integer pageSize, Filter<F> filter) {
-        if (!isUnfiltered(filter)) {
-            return null;
-        }
-        Object allCached = InfinispanL2CacheBridge.getQueryResult("findAll:" + entityClass.getName());
-        if (!(allCached instanceof List<?> all)) {
-            return null;
-        }
-        int from = Math.max(0, page * pageSize);
-        if (from >= all.size()) {
-            return List.of();
-        }
-        int to = Math.min(all.size(), from + pageSize);
-        @SuppressWarnings("unchecked")
-        List<T> pageSlice = (List<T>) all.subList(from, to);
-        return pageSlice;
+        return DaoQueryCacheFallbackSupport.fallbackPageFromFindAllCache(entityClass, page, pageSize, filter);
     }
 
     private Long fallbackCountFromFindAllCache(Filter<F> filter) {
-        if (!isUnfiltered(filter)) {
-            return null;
-        }
-        Object countCached = InfinispanL2CacheBridge.getQueryResult("count:" + entityClass.getName());
-        if (countCached instanceof Long count) {
-            return count;
-        }
-        Object allCached = InfinispanL2CacheBridge.getQueryResult("findAll:" + entityClass.getName());
-        if (allCached instanceof List<?> all) {
-            return (long) all.size();
-        }
-        return null;
+        return DaoQueryCacheFallbackSupport.fallbackCountFromFindAllCache(entityClass, filter);
     }
 
-    private boolean isUnfiltered(Filter<F> filter) {
-        if (filter == null) {
-            return true;
-        }
-        if (filter.getField() != null) {
-            return false;
-        }
-        String value = filter.getValue();
-        return value == null || value.isBlank();
+    private StorageUnavailableException unavailableReadException(String operation, Throwable cause) {
+        return new StorageUnavailableException(
+                "Primary database is temporarily unavailable and no cached data is available for " + operation + ".",
+                cause
+        );
     }
 }

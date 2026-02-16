@@ -13,8 +13,8 @@ public final class InfinispanL2CacheBridge {
     private static final String QUERY_CACHE_NAME = "query-fallback-cache";
     private static final CachingProvider PROVIDER = Caching.getCachingProvider("org.infinispan.jcache.embedded.JCachingProvider");
     private static final CacheManager CACHE_MANAGER = PROVIDER.getCacheManager();
-    private static final Cache<String, Object> CACHE = initCache();
-    private static final Cache<String, Object> QUERY_CACHE = initQueryCache();
+    private static final Cache<String, Object> CACHE = initOrGetCache(CACHE_NAME);
+    private static final Cache<String, Object> QUERY_CACHE = initOrGetCache(QUERY_CACHE_NAME);
 
     private static final AtomicLong HIT_COUNT = new AtomicLong(0);
     private static final AtomicLong MISS_COUNT = new AtomicLong(0);
@@ -23,26 +23,20 @@ public final class InfinispanL2CacheBridge {
     private InfinispanL2CacheBridge() {
     }
 
-    private static Cache<String, Object> initCache() {
-        Cache<String, Object> existing = CACHE_MANAGER.getCache(CACHE_NAME, String.class, Object.class);
-        if (existing != null) {
-            return existing;
-        }
-        MutableConfiguration<String, Object> cfg = new MutableConfiguration<>();
-        cfg.setStoreByValue(false);
-        cfg.setStatisticsEnabled(true);
-        return CACHE_MANAGER.createCache(CACHE_NAME, cfg);
+    public static void warmUp() {
+        CACHE.get("__warmup__");
+        QUERY_CACHE.get("__warmup__");
     }
 
-    private static Cache<String, Object> initQueryCache() {
-        Cache<String, Object> existing = CACHE_MANAGER.getCache(QUERY_CACHE_NAME, String.class, Object.class);
+    private static Cache<String, Object> initOrGetCache(String cacheName) {
+        Cache<String, Object> existing = CACHE_MANAGER.getCache(cacheName, String.class, Object.class);
         if (existing != null) {
             return existing;
         }
         MutableConfiguration<String, Object> cfg = new MutableConfiguration<>();
         cfg.setStoreByValue(false);
         cfg.setStatisticsEnabled(true);
-        return CACHE_MANAGER.createCache(QUERY_CACHE_NAME, cfg);
+        return CACHE_MANAGER.createCache(cacheName, cfg);
     }
 
     public static Object get(String entityName, Object primaryKey) {

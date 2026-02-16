@@ -1,12 +1,14 @@
 package me.zinch.is.islab3.models.dao.implementations;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 import me.zinch.is.islab3.cache.DatabaseFailureDetector;
 import me.zinch.is.islab3.Config;
 import me.zinch.is.islab3.cache.InfinispanL2CacheBridge;
+import me.zinch.is.islab3.exceptions.StorageUnavailableException;
 import me.zinch.is.islab3.models.entities.ImportConflict;
 import me.zinch.is.islab3.models.entities.ImportConflictResolution;
 
@@ -18,6 +20,9 @@ import java.util.function.Supplier;
 public class ImportConflictDao {
     @PersistenceContext(unitName = Config.UNIT_NAME)
     private EntityManager em;
+
+    @Inject
+    private DatabaseFailureDetector databaseFailureDetector;
 
     public Optional<ImportConflict> findById(Integer id) {
         return readThroughCache(
@@ -71,7 +76,7 @@ public class ImportConflictDao {
     }
 
     private <R> R readThroughCache(String cacheKey, Supplier<R> dbQuery) {
-        if (DatabaseFailureDetector.isDatabaseLikelyDown()) {
+        if (databaseFailureDetector.isDatabaseLikelyDown()) {
             Object cached = InfinispanL2CacheBridge.getQueryResult(cacheKey);
             if (cached != null) {
                 @SuppressWarnings("unchecked")
@@ -81,21 +86,24 @@ public class ImportConflictDao {
         }
         try {
             R result = dbQuery.get();
-            DatabaseFailureDetector.markSuccess();
+            databaseFailureDetector.markSuccess();
             InfinispanL2CacheBridge.putQueryResult(cacheKey, result);
             return result;
         } catch (RuntimeException ex) {
-            if (!DatabaseFailureDetector.isDbCommunicationFailure(ex)) {
+            if (!databaseFailureDetector.isDbCommunicationFailure(ex)) {
                 throw ex;
             }
-            DatabaseFailureDetector.markFailure(ex);
+            databaseFailureDetector.markFailure(ex);
             Object cached = InfinispanL2CacheBridge.getQueryResult(cacheKey);
             if (cached != null) {
                 @SuppressWarnings("unchecked")
                 R restored = (R) cached;
                 return restored;
             }
-            throw ex;
+            throw new StorageUnavailableException(
+                    "Primary database is temporarily unavailable and no cached import conflicts are available.",
+                    ex
+            );
         }
     }
 }

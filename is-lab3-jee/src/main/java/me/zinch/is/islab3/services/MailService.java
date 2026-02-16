@@ -1,15 +1,17 @@
 package me.zinch.is.islab3.services;
 
+import jakarta.annotation.Resource;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.concurrent.ManagedExecutorService;
 import jakarta.mail.Message;
 import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import me.zinch.is.islab3.Config;
 import me.zinch.is.islab3.models.entities.ImportConflict;
 import me.zinch.is.islab3.models.entities.User;
 
-import java.io.InputStream;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -18,25 +20,30 @@ import java.util.logging.Logger;
 public class MailService {
     private static final Logger LOGGER = Logger.getLogger(MailService.class.getName());
 
+    @Resource
+    private ManagedExecutorService executor;
+
     public void sendConflictEmail(User user, ImportConflict conflict) {
         if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
             LOGGER.fine("Email skipped: user or email is missing");
             return;
         }
-        Thread worker = new Thread(() -> sendConflictEmailSync(user, conflict), "mail-conflict-" + conflict.getId());
-        worker.setDaemon(true);
-        worker.start();
+        try {
+            executor.submit(() -> sendConflictEmailSync(user, conflict));
+        } catch (RuntimeException ex) {
+            LOGGER.log(Level.WARNING, "ManagedExecutor unavailable, sending email synchronously", ex);
+            sendConflictEmailSync(user, conflict);
+        }
     }
 
     private void sendConflictEmailSync(User user, ImportConflict conflict) {
-        Properties config = loadEmailConfig();
-        String host = config.getProperty("MAIL_HOST");
-        String port = config.getProperty("MAIL_PORT");
-        String username = config.getProperty("MAIL_USER");
-        String password = config.getProperty("MAIL_PASS");
-        String from = config.getProperty("MAIL_FROM");
+        String host = Config.MAIL_HOST;
+        String port = Config.MAIL_PORT;
+        String username = Config.MAIL_USER;
+        String password = Config.MAIL_PASS;
+        String from = Config.MAIL_FROM;
         if (host == null || host.isBlank() || port == null || port.isBlank() || from == null || from.isBlank()) {
-            LOGGER.warning("Email skipped: missing MAIL_HOST/MAIL_PORT/MAIL_FROM in email.properties");
+            LOGGER.warning("Email skipped: missing MAIL_HOST/MAIL_PORT/MAIL_FROM in Config/email.properties");
             return;
         }
 
@@ -72,20 +79,6 @@ public class MailService {
         } catch (Exception ignored) {
             LOGGER.log(Level.WARNING, "Failed to send email for import conflict id=" + conflict.getId(), ignored);
         }
-    }
-
-    private Properties loadEmailConfig() {
-        Properties props = new Properties();
-        try (InputStream input = getClass().getClassLoader().getResourceAsStream("email.properties")) {
-            if (input != null) {
-                props.load(input);
-            } else {
-                LOGGER.warning("email.properties not found on classpath");
-            }
-        } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Failed to load email.properties", e);
-        }
-        return props;
     }
 
     private String buildConflictBody(ImportConflict conflict) {

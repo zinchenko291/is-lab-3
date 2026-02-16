@@ -1,4 +1,4 @@
-package me.zinch.is.islab3.services;
+package me.zinch.is.islab3.services.imports;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,6 +21,7 @@ import me.zinch.is.islab3.exceptions.ResourceNotFoundException;
 import me.zinch.is.islab3.models.dao.implementations.CoordinatesDao;
 import me.zinch.is.islab3.models.dao.implementations.VehicleDao;
 import me.zinch.is.islab3.models.dto.imports.ImportVehicleDto;
+import me.zinch.is.islab3.models.dto.imports.ImportVehicleMapper;
 import me.zinch.is.islab3.models.dto.imports.ImportVehiclesDto;
 import me.zinch.is.islab3.models.entities.Coordinates;
 import me.zinch.is.islab3.models.entities.ImportConflictResolution;
@@ -41,6 +42,7 @@ public class ImportProcessor {
 
     private final VehicleDao vehicleDao;
     private final CoordinatesDao coordinatesDao;
+    private final ImportVehicleMapper importVehicleMapper;
     private final Validator validator;
 
     @PersistenceContext(unitName = Config.UNIT_NAME)
@@ -49,13 +51,15 @@ public class ImportProcessor {
     public ImportProcessor() {
         this.vehicleDao = null;
         this.coordinatesDao = null;
+        this.importVehicleMapper = null;
         this.validator = Validation.buildDefaultValidatorFactory().getValidator();
     }
 
     @Inject
-    public ImportProcessor(VehicleDao vehicleDao, CoordinatesDao coordinatesDao) {
+    public ImportProcessor(VehicleDao vehicleDao, CoordinatesDao coordinatesDao, ImportVehicleMapper importVehicleMapper) {
         this.vehicleDao = vehicleDao;
         this.coordinatesDao = coordinatesDao;
+        this.importVehicleMapper = importVehicleMapper;
         this.validator = Validation.buildDefaultValidatorFactory().getValidator();
     }
 
@@ -112,16 +116,15 @@ public class ImportProcessor {
                 enforceOwner(operation.getUser(), existing);
                 ensureEditable(existing);
                 Coordinates coordinates = resolveCoordinatesForUpdate(operation.getUser(), vehicleDto, existingCoordinates);
-                applyVehicleFields(existing, vehicleDto, coordinates);
+                importVehicleMapper.applyToEntity(existing, vehicleDto, coordinates);
                 vehicleDao.update(existing);
                 added++;
                 continue;
             }
 
             Coordinates coordinates = existingCoordinates.orElseGet(() -> createCoordinates(operation.getUser(), vehicleDto));
-            Vehicle created = new Vehicle();
+            Vehicle created = importVehicleMapper.toEntity(vehicleDto, coordinates);
             created.setOwner(operation.getUser());
-            applyVehicleFields(created, vehicleDto, coordinates);
             vehicleDao.create(created);
             added++;
         }
@@ -141,18 +144,6 @@ public class ImportProcessor {
         coordinates.setY(vehicleDto.getCoordinates().getY());
         coordinates.setOwner(user);
         return coordinatesDao.create(coordinates);
-    }
-
-    private void applyVehicleFields(Vehicle vehicle, ImportVehicleDto vehicleDto, Coordinates coordinates) {
-        vehicle.setName(vehicleDto.getName());
-        vehicle.setCoordinates(coordinates);
-        vehicle.setType(vehicleDto.getType());
-        vehicle.setEnginePower(vehicleDto.getEnginePower());
-        vehicle.setNumberOfWheels(vehicleDto.getNumberOfWheels());
-        vehicle.setCapacity(vehicleDto.getCapacity());
-        vehicle.setDistanceTravelled(vehicleDto.getDistanceTravelled());
-        vehicle.setFuelConsumption(vehicleDto.getFuelConsumption());
-        vehicle.setFuelType(vehicleDto.getFuelType());
     }
 
     private List<ImportVehicleDto> parseVehicles(ImportFormat format, String payload) {
